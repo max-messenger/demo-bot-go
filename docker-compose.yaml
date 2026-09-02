@@ -1,0 +1,64 @@
+services:
+  redis:
+    container_name: demo_bot_redis
+    image: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: yes
+      REDIS_PASSWORD: password
+      REDIS_AOF_ENABLED: no
+    ports:
+      - 6379:6379
+
+  stub:
+    container_name: demo_bot_stub
+    build:
+      context: .
+      dockerfile: docker/stub/Dockerfile
+    ports:
+      - 19090:19090
+
+  tempo:
+    image: grafana/tempo:main-ef79efc
+    container_name: demo_bot_tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./config/dockercompose/tempo/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"      # Tempo API
+      - "9095:9095"      # Tempo metrics
+      - "4317:4317"      # OTLP gRPC receiver
+
+  prometheus:
+    image: prom/prometheus
+    container_name: demo_bot_prometheus
+    volumes:
+      - ./config/dockercompose/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - '9090:9090'
+
+  grafana:
+    image: grafana/grafana
+    container_name: demo_bot_grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./config/dockercompose/grafana/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor metricsSummary
+      - GF_INSTALL_PLUGINS=https://storage.googleapis.com/integration-artifacts/grafana-exploretraces-app/grafana-exploretraces-app-latest.zip;grafana-traces-app
+    depends_on:
+      - prometheus
+      - tempo
+
+networks:
+  default:
+    name: dev_demo_bot_net

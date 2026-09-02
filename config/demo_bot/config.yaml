@@ -1,0 +1,32 @@
+logger:
+  level: info
+  format: json
+
+servers:
+  http:
+    addr: localhost:8008
+  system:
+    addr: localhost:23570
+
+max_bot:
+  public:
+    api_url: https://botapi.max.ru      # MAX Bot API base URL
+    token: "YOUR_BOT_TOKEN"              # bot token from @MasterBot
+    secret: "YOUR_WEBHOOK_SECRET"        # webhook secret
+    path: /webhook/public-bot            # webhook path
+
+redis:
+  main:
+    key_prefix: "demo_bot"
+    addrs:
+      - localhost:6379
+
+locker:
+  pool_name: main
+
+state:
+  ttl: 30m
+
+telemetry:
+  collector:
+    enabled: false

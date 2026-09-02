@@ -1,0 +1,169 @@
+version: "2"
+run:
+  modules-download-mode: mod
+  tests: false
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - cyclop
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - goheader
+    - gomodguard_v2
+    - goprintffuncname
+    - gosec
+    - govet
+    - importas
+    - ineffassign
+    - lll
+    - makezero
+    - misspell
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - paralleltest
+    - prealloc
+    - predeclared
+    - promlinter
+    - revive
+    - staticcheck
+    - tagliatelle
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+  settings:
+    dupl:
+      threshold: 200
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - io/ioutil.ReadFile
+        - io.Copy(*bytes.Buffer)
+        - io.Copy(os.Stdout)
+    funlen:
+      lines: 150
+      statements: 50
+    gocyclo:
+      min-complexity: 20
+    govet:
+      enable:
+        - appends
+        - asmdecl
+        - assign
+        - atomic
+        - atomicalign
+        - bools
+        - buildtag
+        - cgocall
+        - composites
+        - copylocks
+        - deepequalerrors
+        - defers
+        - directive
+        - errorsas
+        - findcall
+        - framepointer
+        - httpresponse
+        - ifaceassert
+        - loopclosure
+        - lostcancel
+        - nilfunc
+        - nilness
+        - printf
+        - reflectvaluecompare
+        - shadow
+        - shift
+        - sigchanyzer
+        - slog
+        - sortslice
+        - stdmethods
+        - stringintconv
+        - structtag
+        - testinggoroutine
+        - tests
+        - unmarshal
+        - unreachable
+        - unsafeptr
+        - unusedresult
+        - unusedwrite
+      disable-all: true
+    lll:
+      line-length: 140
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          yaml: snake
+        use-field-name: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - lll
+        source: '^//go:generate '
+      - linters:
+          - gosec
+        text: 'G404:'
+    paths:
+      - _easyjson.go
+      - _rpc.go
+      - .pb.go
+      - .svc.go
+      - bin$
+      - \.git$
+      - vendor$
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci
+  exclusions:
+    generated: lax
+    paths:
+      - _easyjson.go
+      - _rpc.go
+      - .pb.go
+      - .svc.go
+      - bin$
+      - \.git$
+      - vendor$
+      - third_party$
+      - builtin$
+      - examples$
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule

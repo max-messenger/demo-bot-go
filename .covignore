@@ -1,0 +1,16 @@
+fx.go
+cmd/stg/main.go
+cmd/stub/main.go
+/pkg/
+/testkit/
+/mocks/
+docs/
+box.go
+app.go
+config.go
+options.go
+/internal/app/clients/
+/internal/app/domain/
+/internal/app/router/
+/internal/app/subscriber/
+/internal/app/services/analytic/

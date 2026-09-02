@@ -1,2 +1,122 @@
-# demo-bot-go
-Demo bot for MAX Messenger. It showcases the capabilities of the Bot API through interactive scenarios—each scenario is a step-by-step demonstration of a specific feature (messages, keyboards, attachments, chat administration, etc.).
+# demo_bot
+
+Демо-бот для MAX Messenger. Показывает возможности Bot API через интерактивные
+сценарии — каждый сценарий это пошаговая демонстрация какой-то фичи (сообщения,
+клавиатуры, вложения, администрирование чата и т.д.).
+
+## Возможности
+
+Сценарии запускаются командой `/<name>` или кнопкой на клавиатуре.
+
+Личные чаты:
+
+- `/message` — отправка, редактирование, ответ, удаление сообщений
+- `/actions` — индикаторы действий («печатает…», «отправляет фото…» и т.д7)
+- `/keyboard` — все виды клавиатур и кнопок
+- `/attachments` — картинка, стикер, контакт, локация, шер
+- `/upload` — загрузка и отправка файла
+- `/botinfo` — получение информации о боте
+
+Групповые чаты:
+
+- `/chat` — закреп/откреп сообщения в чате, смена названия чата
+- `/members` — добавление и исключение участников
+- `/admins` — назначение, просмотр, снятие админов
+- `/leave` — бот выходит из чата
+- `/mention` — упоминания и тихие сообщения
+
+Для групповых сценариев бот предварительно проверяет, есть ли у него нужные
+права админа, и предупреждает, если чего-то не хватает.
+
+## Запуск локально
+
+```bash
+make dev_env_up                                          # redis, stub, observability (tempo, prometheus, grafana)
+go run ./cmd/demo_bot -c config/demo_bot/config.yaml
+```
+
+Конфиг — `config/demo_bot/config.yaml`: токен бота, вебхук
+`/webhook/public-bot`, приложение на `:8008`, системный порт `:23570`,
+redis на `localhost:6379`. Заполните `token` и `secret` реальными
+значениями (или вынесите их в `config.local.yaml` — он в `.gitignore`).
+
+Для тестов без связи с реальным бэкендом MAX есть заглушка API:
+
+```bash
+go run ./cmd/stub   # :19090, эндпоинты /me, /subscriptions, /
+```
+
+## Сборка и тесты
+
+Команды выполняются в таком порядке — каждый следующий шаг опирается на
+результат предыдущего.
+
+### 1. `make generate` — генерация кода
+
+Запускает все `go:generate`-директивы: моки через `mockgen` и swagger-документацию
+через `swag init`.
+
+### 2. `make lint` — линтер
+
+`golangci-lint run --fix` — 48 линтеров (сложность, длина строк, порядок
+импортов и т.д.) с автоисправлением где возможно.
+
+### 3. `make test_unit` — unit-тесты
+
+Тесты с префиксом `TestUnit*` через `gotestsum`: с покрытием (`-cover`),
+детектором гонок (`-race`) и сброшенным кэшем. Профиль покрытия пишется в
+`coverage/unit.txt`. Внешних зависимостей нет — только моки.
+
+### 4. `make test_cover` — процент покрытия
+
+Фильтрует `coverage/unit.txt` через `.covignore` и печатает общий процент.
+Запускать строго **после** `make test_unit` — иначе файла покрытия ещё не
+существует.
+
+### 5. Интеграционные и E2E-тесты (нужна инфраструктура)
+
+Этим тестам нужен redis (хранилище состояния) и stub (заглушка MAX Bot API).
+Отдельных таргетов под них в Makefile нет, поэтому поднимаем инфру через
+docker-compose, а сами тесты запускаем через `go test`:
+
+```bash
+make dev_env_up                          # поднять redis, stub, observability
+go test -v -run TestIntegration ./...     # интеграционные
+go test -v -run TestE2E          ./...     # end-to-end
+make dev_env_down                         # остановить и убрать контейнеры с данными
+```
+
+### Один тест
+
+```bash
+go test -v -run TestUnitName ./internal/app/services/bot/...
+```
+
+## Архитектура
+
+Go-микросервис на [`uber-go/fx`](https://pkg.go.dev/go.uber.org/fx). Бутстрап:
+`cmd/demo_bot/main.go` → `internal/app/app.go:CreateApp` → `box.go:Box.CreateApp`
+собирает fx-модули в `fx.App`. Конфиг передаётся флагом `-c` (по умолчанию
+`config.yaml`).
+
+Слои в `internal/app/`:
+
+- `domain/` — бизнес-сущности;
+- `services/` — бизнес-логика;
+- `router/` — HTTP-роутер на `chi`.
+
+Модули подключаются в `internal/app/fx.go` (`rediscli`, `locker`, `maxbot`,
+`repository`, `services`, `router`, `docs`). Контроллеры регистрируются через
+`group:"controller"`, сервисы жизненного цикла — через `group:"grace"`.
+
+Ядро — **система сценариев** (`internal/app/services/bot/scenario/`). Сценарий
+реализует интерфейс `Scenario` (`Name`, `Description`, `ChatType`,
+`RequiredPermissions`, `Handle`). Состояние — `ScenarioState` (имя сценария,
+шаг, произвольные данные) — хранится в redis и привязано к пользователю. Пока
+активного сценария нет, обычные текстовые сообщения игнорируются, обработка
+идёт только по командам и кнопкам. На обработку одного пользователя берётся
+распределённый лок (redis, TTL 10s) — параллельной обработки одного чата нет.
+
+`pkg/` — общая инфраструктура (подключения, observability, middleware,
+распределённый лок). Этот код не модифицируется; доработки — через
+мейнтейнеров фреймворка.
