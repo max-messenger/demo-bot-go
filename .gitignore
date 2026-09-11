@@ -1,0 +1,9 @@
+.DS_Store
+.vscode
+.idea
+.run
+.env
+.zed
+__debug_bin
+*.out
+bin
